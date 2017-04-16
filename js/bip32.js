@@ -13,6 +13,8 @@ var LITECOIN_MAINNET_PUBLIC = 0x019da462;
 var LITECOIN_MAINNET_PRIVATE = 0x019d9cfe;
 var LITECOIN_TESTNET_PUBLIC = 0x0436f6e1;
 var LITECOIN_TESTNET_PRIVATE = 0x0436ef7d;
+var DECRED_MAINNET_PUBLIC = 0x02fda926;
+var DECRED_MAINNET_PRIVATE = 0x02fda4e8;
 
 var BIP32 = function(bytes) {
     // decode base58
@@ -29,7 +31,7 @@ var BIP32 = function(bytes) {
         }
     }
 
-    if( bytes !== undefined ) 
+    if( bytes !== undefined )
         this.init_from_bytes(bytes);
 }
 
@@ -42,26 +44,28 @@ BIP32.prototype.init_from_bytes = function(bytes) {
     this.parent_fingerprint = bytes.slice(5, 9);
     this.child_index        = u32(bytes.slice(9, 13));
     this.chain_code         = bytes.slice(13, 45);
-    
+
     var key_bytes = bytes.slice(45, 78);
 
-    var is_private = 
+    var is_private =
         (this.version == BITCOIN_MAINNET_PRIVATE  ||
          this.version == BITCOIN_TESTNET_PRIVATE  ||
          this.version == DOGECOIN_MAINNET_PRIVATE ||
          this.version == DOGECOIN_TESTNET_PRIVATE ||
          this.version == JUMBUCKS_MAINNET_PRIVATE ||
          this.version == LITECOIN_MAINNET_PRIVATE ||
-         this.version == LITECOIN_TESTNET_PRIVATE );
+         this.version == LITECOIN_TESTNET_PRIVATE ||
+         this.version == DECRED_MAINNET_PRIVATE );
 
-    var is_public = 
+    var is_public =
         (this.version == BITCOIN_MAINNET_PUBLIC  ||
          this.version == BITCOIN_TESTNET_PUBLIC  ||
          this.version == DOGECOIN_MAINNET_PUBLIC ||
          this.version == DOGECOIN_TESTNET_PUBLIC ||
          this.version == JUMBUCKS_MAINNET_PUBLIC ||
          this.version == LITECOIN_MAINNET_PUBLIC ||
-         this.version == LITECOIN_TESTNET_PUBLIC );
+         this.version == LITECOIN_TESTNET_PUBLIC  ||
+         this.version == DECRED_MAINNET_PUBLIC);
 
     if( is_private && key_bytes[0] == 0 ) {
         this.eckey = new Bitcoin.ECKey(key_bytes.slice(1, 33));
@@ -118,6 +122,10 @@ BIP32.prototype.build_extended_public_key = function() {
     case LITECOIN_TESTNET_PUBLIC:
     case LITECOIN_TESTNET_PRIVATE:
         v = LITECOIN_TESTNET_PUBLIC;
+        break;
+    case DECRED_MAINNET_PUBLIC:
+    case DECRED_MAINNET_PRIVATE:
+        v = DECRED_MAINNET_PUBLIC;
         break;
      default:
         throw new Error("Unknown version");
@@ -248,14 +256,16 @@ BIP32.prototype.derive_child = function(i) {
     var use_private = (i & 0x80000000) != 0;
     var ecparams = getSECCurveByName("secp256k1");
 
-    var is_private = 
+    var is_private =
         (this.version == BITCOIN_MAINNET_PRIVATE  ||
          this.version == BITCOIN_TESTNET_PRIVATE  ||
          this.version == DOGECOIN_MAINNET_PRIVATE ||
          this.version == DOGECOIN_TESTNET_PRIVATE ||
          this.version == JUMBUCKS_MAINNET_PRIVATE ||
          this.version == LITECOIN_MAINNET_PRIVATE ||
-         this.version == LITECOIN_TESTNET_PRIVATE);
+         this.version == LITECOIN_TESTNET_PRIVATE ||
+         this.version == DECRED_MAINNET_PUBLIC ||
+         this.version == DECRED_MAINNET_PRIVATE );
 
     if( use_private && (!this.has_private_key || !is_private) ) throw new Error("Cannot do private key derivation without private key");
 
@@ -273,7 +283,7 @@ BIP32.prototype.derive_child = function(i) {
             data = this.eckey.pub.getEncoded(true).concat(ib);
         }
 
-        var j = new jsSHA(Crypto.util.bytesToHex(data), 'HEX');   
+        var j = new jsSHA(Crypto.util.bytesToHex(data), 'HEX');
         var hash = j.getHMAC(Crypto.util.bytesToHex(this.chain_code), "HEX", "SHA-512", "HEX");
         var il = new BigInteger(hash.slice(0, 64), 16);
         var ir = Crypto.util.hexToBytes(hash.slice(64, 128));
@@ -291,7 +301,7 @@ BIP32.prototype.derive_child = function(i) {
 
     } else {
         var data = this.eckey.pub.getEncoded(true).concat(ib);
-        var j = new jsSHA(Crypto.util.bytesToHex(data), 'HEX');   
+        var j = new jsSHA(Crypto.util.bytesToHex(data), 'HEX');
         var hash = j.getHMAC(Crypto.util.bytesToHex(this.chain_code), "HEX", "SHA-512", "HEX");
         var il = new BigInteger(hash.slice(0, 64), 16);
         var ir = Crypto.util.hexToBytes(hash.slice(64, 128));
@@ -345,24 +355,24 @@ function decompress_pubkey(key_bytes) {
     // build X
     var x     = BigInteger.ZERO.clone();
     x.fromString(Crypto.util.bytesToHex(key_bytes.slice(1, 33)), 16);
-    
+
     // get curve
     var curve = ecparams.getCurve();
     var a = curve.getA().toBigInteger();
     var b = curve.getB().toBigInteger();
     var p = curve.getQ();
-    
+
     // compute y^2 = x^3 + a*x + b
     var tmp = x.multiply(x).multiply(x).add(a.multiply(x)).add(b).mod(p);
-    
+
     // compute modular square root of y (mod p)
     var y = tmp.modSqrt(p);
-    
+
     // flip sign if we need to
     if( (y[0] & 0x01) != y_bit ) {
         y = y.multiply(new BigInteger("-1")).mod(p);
     }
-    
+
     return new ECPointFp(curve, curve.fromBigInteger(x), curve.fromBigInteger(y));
 }
 

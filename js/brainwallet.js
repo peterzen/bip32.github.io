@@ -68,6 +68,14 @@
             private_prefix: 0x6f+0x80,
             bip32_public: LITECOIN_TESTNET_PUBLIC,
             bip32_private: LITECOIN_TESTNET_PRIVATE
+        },
+        dcr_main: {
+            name: "Decred",
+            network: "MainNet",
+            prefix: 0x73F,
+            private_prefix: 0x71A,
+            bip32_public: DECRED_MAINNET_PUBLIC,
+            bip32_private: DECRED_MAINNET_PRIVATE
         }
     };
 
@@ -187,7 +195,7 @@
     }
 
     function updatePassphraseHash() {
-        var hasher = new jsSHA(bip32_passphrase_hash, 'HEX');   
+        var hasher = new jsSHA(bip32_passphrase_hash, 'HEX');
         var I = hasher.getHMAC("Bitcoin seed", "TEXT", "SHA-512", "HEX");
         var il = Crypto.util.hexToBytes(I.slice(0, 64));
         var ir = Crypto.util.hexToBytes(I.slice(64, 128));
@@ -220,7 +228,7 @@
     }
 
     function isMasterKey(k) {
-        return k.child_index == 0 && k.depth == 0 && 
+        return k.child_index == 0 && k.depth == 0 &&
                ( k.parent_fingerprint[0] == 0 && k.parent_fingerprint[1] == 0 && k.parent_fingerprint[2] == 0 && k.parent_fingerprint[3] == 0 );
     }
 
@@ -347,8 +355,8 @@
             $("#account_group").hide();
         }
 
-        if( bip32_derivation_path.indexOf('/i/') >= 0 || 
-            bip32_derivation_path.indexOf('/i\'/') >= 0 || 
+        if( bip32_derivation_path.indexOf('/i/') >= 0 ||
+            bip32_derivation_path.indexOf('/i\'/') >= 0 ||
             bip32_derivation_path.slice(bip32_derivation_path.length-2) == "/i" ||
             bip32_derivation_path.slice(bip32_derivation_path.length-3) == "/i'" ) {
             $("#child_group").show();
@@ -405,7 +413,7 @@
 
         $("#derived_public_key").val(result.extended_public_key_string("base58"));
         $("#derived_public_key_hex").val(Crypto.util.bytesToHex(result.eckey.pub.getEncoded(true)));
- 
+
         var hash160 = result.eckey.pubKeyHash;
         var addr = new Bitcoin.Address(hash160);
         addr.version = key_coin.prefix;
@@ -511,7 +519,7 @@
         $("#cancel_hash_worker").attr('disabled', false);
         hash_worker.postMessage({"cmd": "start", "bip32_source_passphrase": passphrase});
     }
-    
+
     function stop_hash_worker() {
         $("#cancel_hash_worker").attr('disabled', true);
         hash_worker_working = false;
